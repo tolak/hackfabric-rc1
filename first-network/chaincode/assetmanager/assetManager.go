@@ -30,7 +30,10 @@ func (t *assetManagerChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Resp
 		return t.deleteUserAsset(stub, args)
 	}else if f == "queryUserAsset"{
 		return t.queryUserAsset(stub, args)
+	}else if f == "setUserAsset"{
+		return t.setUserAsset(stub, args)
 	}
+
 
 	return shim.Error("Invalid invoke function name.")
 }
@@ -105,6 +108,57 @@ func (t *assetManagerChaincode) queryUserAsset(stub shim.ChaincodeStubInterface,
 	fmt.Printf("Query Response: %s\n", jsonResp)
 
 	return shim.Success(asset)
+}
+
+//Set asseet of the specific user
+//arg[0]: user id
+//arg[1]: old asset value
+//arg[1]: new asset value
+func (t *assetManagerChaincode) setUserAsset(stub shim.ChaincodeStubInterface, args []string) pb.Reponse{
+	var err error
+	var oldValue int
+	var newValue int
+
+	if len(args) != 3{
+		return shim.Error("Incorrect number of arguments. Expecting 1")
+	}
+
+	oldValue = args[1]
+	oldValue, err = strconv.Atoi(args[1])
+	if err != nil{
+		return shim.Error("Invalid asset amount, expecting a integer value")
+	}
+	newValue, err = strconv.Atoi(args[2])
+	if err != nil{
+		return shim.Error("Invalid asset amount, expecting a integer value")
+	}
+	if newValue < 0{
+		jsonResp := "{\"Error\":\"Incorrect new asset amount for " + args[0] + "\"}"
+		return shim.Error(jsonResp)
+	}
+
+	old, err := stub.GetState(args[0])
+	if err != nil{
+		jsonResp := "{\"Error\":\"Failed to get state for " + args[0] + "\"}"
+		return shim.Error(jsonResp)
+	}
+
+	if old == nil{
+		jsonResp := "{\"Error\":\"Nil to ammount for " + args[0] + "\"}"
+		return shim.Error(jsonResp)
+	}
+
+	if oldValue != old{
+		jsonResp := "{\"Error\":\"Incorrect old asset amount for " + args[0] + "\"}"
+		return shim.Error(jsonResp)
+	}
+
+	err = stub.PutState(args[0], []byte(strconv.Itoa(newValue)))
+	if err != nil{
+		return shim.Error(err.Error())
+	}
+
+	return shim.Success(nil)
 }
 
 func main() {
